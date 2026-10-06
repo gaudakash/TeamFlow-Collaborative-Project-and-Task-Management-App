@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, KanbanSquare } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { KanbanBoard } from "@/components/boards/kanban-board";
 
 type Props = {
   params: Promise<{ boardId: string }>;
@@ -17,6 +18,7 @@ export default async function BoardPage({ params }: Props) {
     .eq("id", boardId)
     .maybeSingle();
 
+  // RLS hides boards from non-members → 404
   if (!board || !board.workspace) notFound();
 
   return (
@@ -31,15 +33,7 @@ export default async function BoardPage({ params }: Props) {
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{board.name}</h1>
       </div>
 
-      <div className="flex flex-col items-center rounded-xl border border-dashed bg-background p-12 text-center">
-        <KanbanSquare className="size-10 text-muted-foreground" aria-hidden />
-        <h2 className="mt-4 text-lg font-semibold">
-          The Kanban board is coming in Phase 3
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Columns, tasks, and drag-and-drop will live here.
-        </p>
-      </div>
+      <KanbanBoard boardId={board.id} workspaceId={board.workspace.id} />
     </div>
   );
 }
