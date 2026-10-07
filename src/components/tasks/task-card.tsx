@@ -21,7 +21,7 @@ export function TaskCard({ task, onOpen }: Props) {
       onClick={() => onOpen(task.id)}
       className="w-full space-y-3 rounded-lg border bg-card p-3 text-left shadow-sm transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <p className="line-clamp-2 text-sm font-medium">{task.title}</p>
+      <p className="line-clamp-2 pr-6 text-sm font-medium">{task.title}</p>
 
       {task.tags.length > 0 && (
         <ul className="flex flex-wrap gap-1" aria-label="Tags">

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { KanbanBoard } from "@/components/boards/kanban-board";
+import { KanbanBoardLoader } from "@/components/boards/kanban-board-loader";
 
 type Props = {
   params: Promise<{ boardId: string }>;
@@ -32,8 +32,10 @@ export default async function BoardPage({ params }: Props) {
         </Link>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{board.name}</h1>
       </div>
-
-      <KanbanBoard boardId={board.id} workspaceId={board.workspace.id} />
+      <KanbanBoardLoader
+        boardId={board.id}
+        workspaceId={board.workspace.id}
+      />{" "}
     </div>
   );
 }

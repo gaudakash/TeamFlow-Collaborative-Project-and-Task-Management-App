@@ -1,9 +1,18 @@
+"use client";
+
+import { useMemo } from "react";
+import { useDroppable } from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TaskCard } from "@/components/tasks/task-card";
 import { STATUS_CONFIG, type TaskStatus } from "@/lib/task-config";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/hooks/use-tasks";
+import { COLUMN_WIDTH_CLASS } from "./board-skeleton";
+import { SortableTaskCard } from "./sortable-task-card";
 
 type Props = {
   status: TaskStatus;
@@ -16,10 +25,17 @@ export function BoardColumn({ status, tasks, onAddTask, onOpenTask }: Props) {
   const { label, dotClass } = STATUS_CONFIG[status];
   const headingId = `column-${status}`;
 
+  // The column itself is a drop target, so you can drop into EMPTY columns
+  const { setNodeRef, isOver } = useDroppable({
+    id: status,
+    data: { type: "column", status },
+  });
+  const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
+
   return (
     <section
       aria-labelledby={headingId}
-      className="flex w-[85vw] max-w-xs shrink-0 snap-start flex-col rounded-xl bg-muted/60 sm:w-72 xl:w-auto xl:min-w-0 xl:max-w-none xl:flex-1"
+      className={cn(COLUMN_WIDTH_CLASS, "flex flex-col rounded-xl bg-muted/60")}
     >
       <header className="flex items-center gap-2 px-3 pt-3">
         <span className={cn("size-2 rounded-full", dotClass)} aria-hidden />
@@ -43,19 +59,25 @@ export function BoardColumn({ status, tasks, onAddTask, onOpenTask }: Props) {
         </Button>
       </header>
 
-      <ul className="flex min-h-24 flex-1 flex-col gap-2 p-2">
-        {tasks.length === 0 ? (
-          <li className="flex flex-1 items-center justify-center rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
-            No tasks
-          </li>
-        ) : (
-          tasks.map((task) => (
-            <li key={task.id}>
-              <TaskCard task={task} onOpen={onOpenTask} />
+      <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+        <ul
+          ref={setNodeRef}
+          className={cn(
+            "m-2 flex min-h-24 flex-1 flex-col gap-2 rounded-lg transition-colors",
+            isOver && "bg-primary/5",
+          )}
+        >
+          {tasks.length === 0 ? (
+            <li className="flex flex-1 items-center justify-center rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
+              Drop tasks here
             </li>
-          ))
-        )}
-      </ul>
+          ) : (
+            tasks.map((task) => (
+              <SortableTaskCard key={task.id} task={task} onOpen={onOpenTask} />
+            ))
+          )}
+        </ul>
+      </SortableContext>
     </section>
   );
 }
