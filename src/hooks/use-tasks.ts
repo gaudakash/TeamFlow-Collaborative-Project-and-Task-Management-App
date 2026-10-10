@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { queryKeys } from "@/lib/query-keys";
-import { applyTaskMove, getNextPosition, type TaskMove } from "@/lib/tasks";
+import { applyTaskMove, type TaskMove } from "@/lib/tasks";
 import type { TaskStatus } from "@/lib/task-config";
 import type { TaskPayload } from "@/lib/validations/task";
 import type { Tables } from "@/types/database";
@@ -20,7 +20,28 @@ export type Task = Tables<"tasks"> & { assignee: TaskAssignee | null };
 const TASK_SELECT =
   "*, assignee:profiles!tasks_assigned_to_fkey(id, full_name, email, avatar_url)";
 
-// ---------- Read ----------
+type SupabaseClient = ReturnType<typeof createClient>;
+
+/** Position at the bottom of a column, read from the DB (never trust a possibly-empty cache). */
+async function getBottomPosition(
+  supabase: SupabaseClient,
+  boardId: string,
+  status: TaskStatus,
+) {
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("position")
+    .eq("board_id", boardId)
+    .eq("status", status)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return (data?.position ?? 0) + 1000;
+}
+
+// ---------- Read: all tasks on a board ----------
 export function useTasks(boardId: string) {
   return useQuery({
     queryKey: queryKeys.tasks.byBoard(boardId),
@@ -38,10 +59,27 @@ export function useTasks(boardId: string) {
   });
 }
 
+// ---------- Read: a single task (detail page) ----------
+export function useTask(taskId: string) {
+  return useQuery({
+    queryKey: queryKeys.tasks.detail(taskId),
+    queryFn: async (): Promise<Task | null> => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("tasks")
+        .select(TASK_SELECT)
+        .eq("id", taskId)
+        .maybeSingle();
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+  });
+}
+
 // ---------- Create ----------
 export function useCreateTask(boardId: string) {
   const queryClient = useQueryClient();
-  const key = queryKeys.tasks.byBoard(boardId);
 
   return useMutation({
     mutationFn: async (payload: TaskPayload) => {
@@ -51,7 +89,11 @@ export function useCreateTask(boardId: string) {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("You must be signed in");
 
-      const cached = queryClient.getQueryData<Task[]>(key) ?? [];
+      const position = await getBottomPosition(
+        supabase,
+        boardId,
+        payload.status,
+      );
 
       const { data, error } = await supabase
         .from("tasks")
@@ -59,7 +101,7 @@ export function useCreateTask(boardId: string) {
           ...payload,
           board_id: boardId,
           created_by: user.id,
-          position: getNextPosition(cached, payload.status),
+          position,
         })
         .select("id")
         .single();
@@ -67,11 +109,14 @@ export function useCreateTask(boardId: string) {
       if (error) throw new Error(error.message);
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks.byBoard(boardId),
+      }),
   });
 }
 
-// ---------- Update (edit dialog) ----------
+// ---------- Update (edit form) ----------
 type UpdateTaskInput = {
   id: string;
   previousStatus: TaskStatus;
@@ -80,18 +125,23 @@ type UpdateTaskInput = {
 
 export function useUpdateTask(boardId: string) {
   const queryClient = useQueryClient();
-  const key = queryKeys.tasks.byBoard(boardId);
 
   return useMutation({
     mutationFn: async ({ id, previousStatus, payload }: UpdateTaskInput) => {
       const supabase = createClient();
-      const cached = queryClient.getQueryData<Task[]>(key) ?? [];
 
       // Changing status in the form → move the task to the bottom of the new column
-      const statusChanged = payload.status !== previousStatus;
-      const update = statusChanged
-        ? { ...payload, position: getNextPosition(cached, payload.status) }
-        : payload;
+      const update =
+        payload.status !== previousStatus
+          ? {
+              ...payload,
+              position: await getBottomPosition(
+                supabase,
+                boardId,
+                payload.status,
+              ),
+            }
+          : payload;
 
       const { data, error } = await supabase
         .from("tasks")
@@ -103,14 +153,15 @@ export function useUpdateTask(boardId: string) {
       if (!data || data.length === 0)
         throw new Error("You do not have permission to edit this task");
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    // Refresh the board AND the detail page
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all }),
   });
 }
 
 // ---------- Delete ----------
 export function useDeleteTask(boardId: string) {
   const queryClient = useQueryClient();
-  const key = queryKeys.tasks.byBoard(boardId);
 
   return useMutation({
     mutationFn: async (taskId: string) => {
@@ -125,7 +176,10 @@ export function useDeleteTask(boardId: string) {
       if (!data || data.length === 0)
         throw new Error("You do not have permission to delete this task");
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks.byBoard(boardId),
+      }),
   });
 }
 
@@ -167,15 +221,13 @@ export function useMoveTask(boardId: string) {
     },
 
     onError: (_error, _move, context) => {
-      // Roll back to the snapshot taken before the move
       if (context?.previous) queryClient.setQueryData(key, context.previous);
     },
 
     onSettled: () => {
-      // Only refetch when this is the LAST pending move.
-      // Otherwise a refetch could return old data while another move is still saving → flicker.
+      // Only refetch when this is the LAST pending move (prevents flicker during rapid drags)
       if (queryClient.isMutating({ mutationKey }) === 1) {
-        queryClient.invalidateQueries({ queryKey: key });
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
       }
     },
   });

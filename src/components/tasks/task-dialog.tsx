@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { Maximize2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +48,15 @@ export function TaskDialog({ boardId, workspaceId, tasks }: Props) {
               ? "Update the details of this task."
               : "Add a task to this board."}
           </DialogDescription>
+          {task && (
+            <Link
+              href={`/app/tasks/${task.id}`}
+              className="inline-flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline"
+            >
+              <Maximize2 className="size-3.5" aria-hidden />
+              Open full page &amp; comments
+            </Link>
+          )}
         </DialogHeader>
 
         {open && (

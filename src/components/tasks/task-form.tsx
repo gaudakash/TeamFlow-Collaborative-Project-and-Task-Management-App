@@ -46,6 +46,7 @@ type Props = {
   task?: Task;
   defaultStatus: TaskStatus;
   onDone: () => void;
+  onDeleted?: () => void;
 };
 
 function FieldError({ id, message }: { id: string; message?: string }) {
@@ -63,6 +64,7 @@ export function TaskForm({
   task,
   defaultStatus,
   onDone,
+  onDeleted,
 }: Props) {
   const { data: members = [] } = useMembers(workspaceId);
   const createTask = useCreateTask(boardId);
@@ -107,7 +109,8 @@ export function TaskForm({
     deleteTask.mutate(task.id, {
       onSuccess: () => {
         toast.success("Task deleted");
-        onDone();
+        const finish = onDeleted ?? onDone;
+        finish();
       },
       onError: (err) => toast.error(err.message),
     });
