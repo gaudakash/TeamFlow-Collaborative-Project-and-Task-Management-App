@@ -12,14 +12,23 @@ export default async function BoardPage({ params }: Props) {
   const { boardId } = await params;
   const supabase = await createClient();
 
-  const { data: board } = await supabase
-    .from("boards")
-    .select("id, name, workspace:workspaces(id, name)")
-    .eq("id", boardId)
-    .maybeSingle();
+  // Both requests in parallel
+  const [
+    {
+      data: { user },
+    },
+    { data: board },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("boards")
+      .select("id, name, workspace:workspaces(id, name)")
+      .eq("id", boardId)
+      .maybeSingle(),
+  ]);
 
   // RLS hides boards from non-members → 404
-  if (!board || !board.workspace) notFound();
+  if (!user || !board || !board.workspace) notFound();
 
   return (
     <div className="space-y-6">
@@ -32,10 +41,12 @@ export default async function BoardPage({ params }: Props) {
         </Link>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{board.name}</h1>
       </div>
+
       <KanbanBoardLoader
         boardId={board.id}
         workspaceId={board.workspace.id}
-      />{" "}
+        currentUserId={user.id}
+      />
     </div>
   );
 }

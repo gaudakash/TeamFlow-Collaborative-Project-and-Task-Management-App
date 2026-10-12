@@ -10,9 +10,14 @@ import type { Task } from "@/hooks/use-tasks";
 type Props = {
   task: Task;
   onOpen: (taskId: string) => void;
+  dragDisabled?: boolean;
 };
 
-export function SortableTaskCard({ task, onOpen }: Props) {
+export function SortableTaskCard({
+  task,
+  onOpen,
+  dragDisabled = false,
+}: Props) {
   const {
     attributes,
     listeners,
@@ -23,6 +28,7 @@ export function SortableTaskCard({ task, onOpen }: Props) {
     isDragging,
   } = useSortable({
     id: task.id,
+    disabled: dragDisabled,
     data: { type: "task", status: task.status, title: task.title },
   });
 
@@ -30,22 +36,28 @@ export function SortableTaskCard({ task, onOpen }: Props) {
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn("group relative select-none", isDragging && "opacity-40")}
+      className={cn(
+        "group relative",
+        !dragDisabled && "select-none",
+        isDragging && "opacity-40",
+      )}
       // Mouse/touch: drag from anywhere on the card
       {...listeners}
     >
       <TaskCard task={task} onOpen={onOpen} />
 
       {/* Keyboard: drag only from this handle, so Enter on the card still opens the dialog */}
-      <button
-        ref={setActivatorNodeRef}
-        type="button"
-        {...attributes}
-        aria-label={`Move task: ${task.title}`}
-        className="absolute right-1.5 top-1.5 cursor-grab rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing sm:opacity-0 sm:group-hover:opacity-100"
-      >
-        <GripVertical className="size-4" aria-hidden />
-      </button>
+      {!dragDisabled && (
+        <button
+          ref={setActivatorNodeRef}
+          type="button"
+          {...attributes}
+          aria-label={`Move task: ${task.title}`}
+          className="absolute right-1.5 top-1.5 cursor-grab rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing sm:opacity-0 sm:group-hover:opacity-100"
+        >
+          <GripVertical className="size-4" aria-hidden />
+        </button>
+      )}
     </li>
   );
 }

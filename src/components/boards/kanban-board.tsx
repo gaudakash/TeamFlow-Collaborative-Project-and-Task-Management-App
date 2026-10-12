@@ -18,21 +18,25 @@ import {
   type Over,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TaskCard } from "@/components/tasks/task-card";
 import { TaskDialog } from "@/components/tasks/task-dialog";
 import { useMoveTask, useTasks, type Task } from "@/hooks/use-tasks";
+import { useTaskFilters } from "@/hooks/use-task-filters";
 import {
   STATUS_CONFIG,
   TASK_STATUSES,
   type TaskStatus,
 } from "@/lib/task-config";
-import { getPositionBetween, groupTasksByStatus } from "@/lib/tasks";
+import { buildBoardColumns } from "@/lib/task-filters";
+import { getPositionBetween } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
 import { useTaskDialogStore } from "@/stores/task-dialog-store";
 import { BoardColumn } from "./board-column";
 import { BOARD_SCROLL_CLASS, BoardSkeleton } from "./board-skeleton";
+import { BoardToolbar } from "./board-toolbar";
 
 type Columns = Record<TaskStatus, Task[]>;
 
@@ -83,11 +87,13 @@ const screenReaderInstructions = {
 type Props = {
   boardId: string;
   workspaceId: string;
+  currentUserId: string;
 };
 
-export function KanbanBoard({ boardId, workspaceId }: Props) {
+export function KanbanBoard({ boardId, workspaceId, currentUserId }: Props) {
   const { data: tasks, isPending, isError, error, refetch } = useTasks(boardId);
   const moveTask = useMoveTask(boardId);
+  const { filters, clearFilters, activeCount } = useTaskFilters();
 
   const openCreate = useTaskDialogStore((s) => s.openCreate);
   const openEdit = useTaskDialogStore((s) => s.openEdit);
@@ -97,11 +103,19 @@ export function KanbanBoard({ boardId, workspaceId }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
 
-  const grouped = useMemo(() => groupTasksByStatus(tasks ?? []), [tasks]);
-  const columns = drag && drag.base === tasks ? drag.columns : grouped;
+  // Filter → group → sort (pure function, recalculated only when inputs change)
+  const { columns: filteredColumns, visibleCount } = useMemo(
+    () => buildBoardColumns(tasks ?? [], filters, { currentUserId }),
+    [tasks, filters, currentUserId],
+  );
+
+  const columns = drag && drag.base === tasks ? drag.columns : filteredColumns;
   const activeTask = activeId
     ? tasks?.find((t) => t.id === activeId)
     : undefined;
+  const dragDisabled = filters.sort !== "manual";
+  const isFiltered = activeCount > 0;
+  const visibleStatuses = filters.status ? [filters.status] : TASK_STATUSES;
 
   const sensors = useSensors(
     // Mouse: must move 8px before a drag starts, so normal clicks still open the task
@@ -124,11 +138,10 @@ export function KanbanBoard({ boardId, workspaceId }: Props) {
   const handleDragStart = ({ active }: DragStartEvent) => {
     if (!tasks) return;
     setActiveId(String(active.id));
-    setDrag({ base: tasks, columns: grouped });
+    setDrag({ base: tasks, columns: filteredColumns });
   };
 
   // Fires while hovering. Moves the card into another column in LOCAL state.
-  // (Reordering within the same column is animated by SortableContext.)
   const handleDragOver = ({ active, over }: DragOverEvent) => {
     if (!over) return;
 
@@ -192,13 +205,13 @@ export function KanbanBoard({ boardId, workspaceId }: Props) {
     // Nothing changed? Don't hit the server.
     const sameOrder =
       ordered.map((t) => t.id).join() ===
-      grouped[status].map((t) => t.id).join();
+      filteredColumns[status].map((t) => t.id).join();
     if (original.status === status && sameOrder) {
       resetDrag();
       return;
     }
 
-    // Only the moved task gets a new position (midpoint of its new neighbors)
+    // Midpoint between the VISIBLE neighbors. Hidden (filtered-out) tasks keep their positions.
     const position = getPositionBetween(
       ordered[newIndex - 1]?.position,
       ordered[newIndex + 1]?.position,
@@ -242,7 +255,23 @@ export function KanbanBoard({ boardId, workspaceId }: Props) {
   }
 
   return (
-    <>
+    <div className="space-y-4">
+      <BoardToolbar
+        workspaceId={workspaceId}
+        totalCount={tasks.length}
+        visibleCount={visibleCount}
+      />
+
+      {isFiltered && visibleCount === 0 && tasks.length > 0 && (
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed bg-background p-6 text-center">
+          <SearchX className="size-6 text-muted-foreground" aria-hidden />
+          <p className="text-sm font-medium">No tasks match your filters</p>
+          <Button variant="outline" size="sm" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        </div>
+      )}
+
       <DndContext
         id="kanban-board"
         sensors={sensors}
@@ -255,13 +284,15 @@ export function KanbanBoard({ boardId, workspaceId }: Props) {
       >
         {/* Disable scroll-snap while dragging so auto-scroll isn't fighting it */}
         <div className={cn(BOARD_SCROLL_CLASS, activeId && "snap-none")}>
-          {TASK_STATUSES.map((status) => (
+          {visibleStatuses.map((status) => (
             <BoardColumn
               key={status}
               status={status}
               tasks={columns[status]}
               onAddTask={openCreate}
               onOpenTask={openEdit}
+              dragDisabled={dragDisabled}
+              isFiltered={isFiltered}
             />
           ))}
         </div>
@@ -277,6 +308,6 @@ export function KanbanBoard({ boardId, workspaceId }: Props) {
       </DndContext>
 
       <TaskDialog boardId={boardId} workspaceId={workspaceId} tasks={tasks} />
-    </>
+    </div>
   );
 }

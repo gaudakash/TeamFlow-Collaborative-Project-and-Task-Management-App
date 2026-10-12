@@ -19,15 +19,25 @@ type Props = {
   tasks: Task[];
   onAddTask: (status: TaskStatus) => void;
   onOpenTask: (taskId: string) => void;
+  dragDisabled?: boolean;
+  isFiltered?: boolean;
 };
 
-export function BoardColumn({ status, tasks, onAddTask, onOpenTask }: Props) {
+export function BoardColumn({
+  status,
+  tasks,
+  onAddTask,
+  onOpenTask,
+  dragDisabled = false,
+  isFiltered = false,
+}: Props) {
   const { label, dotClass } = STATUS_CONFIG[status];
   const headingId = `column-${status}`;
 
   // The column itself is a drop target, so you can drop into EMPTY columns
   const { setNodeRef, isOver } = useDroppable({
     id: status,
+    disabled: dragDisabled,
     data: { type: "column", status },
   });
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
@@ -69,11 +79,16 @@ export function BoardColumn({ status, tasks, onAddTask, onOpenTask }: Props) {
         >
           {tasks.length === 0 ? (
             <li className="flex flex-1 items-center justify-center rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
-              Drop tasks here
+              {isFiltered ? "No matching tasks" : "Drop tasks here"}
             </li>
           ) : (
             tasks.map((task) => (
-              <SortableTaskCard key={task.id} task={task} onOpen={onOpenTask} />
+              <SortableTaskCard
+                key={task.id}
+                task={task}
+                onOpen={onOpenTask}
+                dragDisabled={dragDisabled}
+              />
             ))
           )}
         </ul>
