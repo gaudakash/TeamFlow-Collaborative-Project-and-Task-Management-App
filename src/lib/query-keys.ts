@@ -18,3 +18,9 @@ export const queryKeys = {
     byTask: (taskId: string) => ["comments", taskId] as const,
   },
 };
+
+/** Shared mutation keys, so realtime code can ask "is the user saving something right now?" */
+export const mutationKeys = {
+  moveTask: (boardId: string) => ["moveTask", boardId] as const,
+  addComment: (taskId: string) => ["addComment", taskId] as const,
+};

@@ -1,8 +1,7 @@
 "use client";
-
+import { mutationKeys, queryKeys } from "@/lib/query-keys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { queryKeys } from "@/lib/query-keys";
 import { applyTaskMove, type TaskMove } from "@/lib/tasks";
 import type { TaskStatus } from "@/lib/task-config";
 import type { TaskPayload } from "@/lib/validations/task";
@@ -193,7 +192,7 @@ export function useDeleteTask(boardId: string) {
 export function useMoveTask(boardId: string) {
   const queryClient = useQueryClient();
   const key = queryKeys.tasks.byBoard(boardId);
-  const mutationKey = ["moveTask", boardId] as const;
+  const mutationKey = mutationKeys.moveTask(boardId);
 
   return useMutation({
     mutationKey,

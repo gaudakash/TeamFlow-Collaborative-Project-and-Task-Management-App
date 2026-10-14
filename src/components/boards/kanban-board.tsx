@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useIsMutating } from "@tanstack/react-query";
 import {
   DndContext,
   DragOverlay,
@@ -21,10 +22,13 @@ import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { LiveIndicator } from "@/components/shared/live-indicator";
 import { TaskCard } from "@/components/tasks/task-card";
 import { TaskDialog } from "@/components/tasks/task-dialog";
+import { useRealtimeBoardTasks } from "@/hooks/use-realtime-tasks";
 import { useMoveTask, useTasks, type Task } from "@/hooks/use-tasks";
 import { useTaskFilters } from "@/hooks/use-task-filters";
+import { mutationKeys } from "@/lib/query-keys";
 import {
   STATUS_CONFIG,
   TASK_STATUSES,
@@ -102,6 +106,14 @@ export function KanbanBoard({ boardId, workspaceId, currentUserId }: Props) {
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
+
+  // Pause live updates while the user is dragging or a move is saving,
+  // so a teammate's change never yanks a card out from under the cursor.
+  const isMoving =
+    useIsMutating({ mutationKey: mutationKeys.moveTask(boardId) }) > 0;
+  const liveStatus = useRealtimeBoardTasks(boardId, {
+    paused: activeId !== null || isMoving,
+  });
 
   // Filter → group → sort (pure function, recalculated only when inputs change)
   const { columns: filteredColumns, visibleCount } = useMemo(
@@ -256,6 +268,10 @@ export function KanbanBoard({ boardId, workspaceId, currentUserId }: Props) {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <LiveIndicator status={liveStatus} />
+      </div>
+
       <BoardToolbar
         workspaceId={workspaceId}
         totalCount={tasks.length}

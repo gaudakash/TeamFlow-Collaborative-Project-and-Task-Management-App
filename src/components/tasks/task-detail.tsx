@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { LiveIndicator } from "@/components/shared/live-indicator";
+import { useRealtimeTask } from "@/hooks/use-realtime-tasks";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
@@ -63,6 +65,7 @@ export function TaskDetail({
   const router = useRouter();
   const { data: task, isPending, isError, error, refetch } = useTask(taskId);
   const [editOpen, setEditOpen] = useState(false);
+  const liveStatus = useRealtimeTask(taskId);
 
   if (isPending) return <TaskDetailSkeleton />;
 
@@ -111,9 +114,16 @@ export function TaskDetail({
           <h1 className="break-words text-2xl font-bold tracking-tight">
             {task.title}
           </h1>
-          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-            <Pencil aria-hidden /> Edit
-          </Button>
+          <div className="flex shrink-0 items-center gap-3">
+            <LiveIndicator status={liveStatus} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil aria-hidden /> Edit
+            </Button>
+          </div>
         </div>
 
         <section aria-labelledby="description-heading" className="space-y-2">

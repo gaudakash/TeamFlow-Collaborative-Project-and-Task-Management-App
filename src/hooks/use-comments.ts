@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { queryKeys } from "@/lib/query-keys";
+import { mutationKeys, queryKeys } from "@/lib/query-keys";
 import type { TaskAssignee } from "@/hooks/use-tasks";
 
 export type CommentAuthor = TaskAssignee;
@@ -44,7 +44,7 @@ export function useComments(taskId: string) {
 export function useAddComment(taskId: string, currentUser: CommentAuthor) {
   const queryClient = useQueryClient();
   const key = queryKeys.comments.byTask(taskId);
-  const mutationKey = ["addComment", taskId] as const;
+  const mutationKey = mutationKeys.addComment(taskId);
 
   return useMutation({
     mutationKey,
