@@ -42,6 +42,12 @@ export function useRealtimeBoardTasks(
   const refetchSoon = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
+      // The user may have started dragging after this refetch was scheduled.
+      // Don't refetch mid-drag: queue it, and it runs right after the drop.
+      if (pausedRef.current) {
+        pendingRef.current = true;
+        return;
+      }
       queryClient.invalidateQueries({
         queryKey: queryKeys.tasks.byBoard(boardId),
       });

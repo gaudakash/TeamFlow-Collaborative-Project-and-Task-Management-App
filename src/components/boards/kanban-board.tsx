@@ -18,7 +18,8 @@ import {
   type DragStartEvent,
   type Over,
 } from "@dnd-kit/core";
-import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { arrayMove } from "@dnd-kit/sortable";
+import { boardKeyboardCoordinates } from "./board-keyboard-coordinates";
 import { SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -121,7 +122,13 @@ export function KanbanBoard({ boardId, workspaceId, currentUserId }: Props) {
     [tasks, filters, currentUserId],
   );
 
-  const columns = drag && drag.base === tasks ? drag.columns : filteredColumns;
+  // While a drag is active, ALWAYS show the local drag preview, so a background refetch
+  // can never yank the card out from under the cursor. After the drop, switch back to
+  // the cache as soon as it changes (optimistic update or refetch).
+  const columns =
+    drag && (activeId !== null || drag.base === tasks)
+      ? drag.columns
+      : filteredColumns;
   const activeTask = activeId
     ? tasks?.find((t) => t.id === activeId)
     : undefined;
@@ -138,7 +145,7 @@ export function KanbanBoard({ boardId, workspaceId, currentUserId }: Props) {
     }),
     // Keyboard: arrow keys move between positions and columns
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+      coordinateGetter: boardKeyboardCoordinates,
     }),
   );
 
@@ -229,9 +236,10 @@ export function KanbanBoard({ boardId, workspaceId, currentUserId }: Props) {
       ordered[newIndex + 1]?.position,
     );
 
-    // Keep showing the final order until the optimistic cache update takes over
+    // Use the CURRENT cache as the base: if a refetch happened mid-drag, the old base
+    // would be stale and the card would flicker back for a frame after dropping.
     setDrag({
-      base: drag.base,
+      base: tasks ?? drag.base,
       columns: { ...drag.columns, [status]: ordered },
     });
 
