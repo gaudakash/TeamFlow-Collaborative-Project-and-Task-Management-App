@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LogOut } from "lucide-react";
-import { logout } from "@/actions/auth";
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { UserMenu } from "@/components/layout/user-menu";
 import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher";
 
-// Private dashboard: keep it out of Google
+// Private dashboard: keep it out of search engines
 export const metadata: Metadata = {
-  title: "Dashboard | TeamFlow",
+  title: "Dashboard",
   robots: { index: false, follow: false },
 };
 
@@ -28,36 +27,45 @@ export default async function AppLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, email")
+    .select("full_name, email, avatar_url")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
-  const displayName = profile?.full_name || profile?.email || user.email;
+  const email = profile?.email ?? user.email ?? "";
+  const name = profile?.full_name || email;
 
   return (
     <div className="min-h-screen bg-muted/40">
-      <header className="sticky top-0 z-40 border-b bg-background">
-        <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4">
-          <Link href="/app/workspaces" className="font-semibold tracking-tight">
-            TeamFlow
-          </Link>
-          <WorkspaceSwitcher />
+      {/* Keyboard users can jump past the header straight to the content */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:shadow-lg focus:ring-2 focus:ring-ring"
+      >
+        Skip to content
+      </a>
 
-          <div className="ml-auto flex items-center gap-2">
-            <span className="hidden text-sm text-muted-foreground md:inline">
-              {displayName}
-            </span>
-            <form action={logout}>
-              <Button type="submit" variant="ghost" size="sm">
-                <LogOut aria-hidden />
-                <span className="sr-only sm:not-sr-only">Log out</span>
-              </Button>
-            </form>
+      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4">
+          <Logo href="/app/workspaces" hideTextOnMobile />
+          <WorkspaceSwitcher />
+          <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
+            <UserMenu
+              name={name}
+              email={email}
+              avatarUrl={profile?.avatar_url ?? null}
+            />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8">{children}</main>
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="mx-auto max-w-7xl px-4 py-8 focus:outline-none"
+      >
+        {children}
+      </main>
     </div>
   );
 }

@@ -11,6 +11,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Log in",
+  description: "Log in to your TeamFlow workspace.",
+};
 
 type LoginPageProps = {
   searchParams: Promise<{ error?: string }>;

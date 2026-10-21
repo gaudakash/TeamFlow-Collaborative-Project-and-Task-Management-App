@@ -25,9 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { taskId } = await params;
   const task = await getTaskContext(taskId);
   // `robots: noindex` is inherited from the /app layout
-  return {
-    title: task ? `${task.title} | TeamFlow` : "Task not found | TeamFlow",
-  };
+  return { title: task ? task.title : "Task not found" };
 }
 
 export default async function TaskPage({ params }: Props) {

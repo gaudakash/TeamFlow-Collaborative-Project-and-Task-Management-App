@@ -12,6 +12,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Sign up",
+  description:
+    "Create a free TeamFlow account and start organizing your team’s work.",
+};
+
 type SignupPageProps = {
   searchParams: Promise<{ error?: string }>;
 };
