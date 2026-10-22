@@ -23,20 +23,24 @@ export async function login(formData: FormData) {
 
 export async function signup(formData: FormData) {
   const supabase = await createClient();
-  const data = {
+
+  const { data, error } = await supabase.auth.signUp({
     email: formData.get("email") as string,
     password: formData.get("password") as string,
     options: {
-      data: {
-        full_name: formData.get("full_name") as string,
-      },
+      data: { full_name: formData.get("full_name") as string },
     },
-  };
-
-  const { error } = await supabase.auth.signUp(data);
+  });
 
   if (error) {
-    redirect("/signup?error=Could not create user");
+    redirect(`/signup?error=${encodeURIComponent(error.message)}`);
+  }
+
+  // Email confirmation enabled → no session yet. Tell the user what to do next.
+  if (!data.session) {
+    redirect(
+      `/login?message=${encodeURIComponent("Check your email to confirm your account, then log in.")}`,
+    );
   }
 
   revalidatePath("/", "layout");

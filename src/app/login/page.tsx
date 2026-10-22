@@ -1,6 +1,7 @@
 import { login } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { siteConfig } from "@/lib/site";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -19,11 +20,11 @@ export const metadata: Metadata = {
 };
 
 type LoginPageProps = {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; message?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const { error } = await searchParams;
+  const { error, message } = await searchParams;
   return (
     <div className="flex h-screen items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md">
@@ -34,6 +35,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {message && (
+            <p
+              role="status"
+              className="mb-4 rounded-md border bg-muted px-3 py-2 text-sm"
+            >
+              {message}
+            </p>
+          )}
           <form action={login} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -53,6 +62,19 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               Sign In
             </Button>
           </form>
+          <div className="mt-6 rounded-md border border-dashed p-3 text-sm">
+            <p className="font-medium">Just looking around?</p>
+            <p className="mt-1 text-muted-foreground">
+              Use the demo account:{" "}
+              <span className="font-mono text-foreground">
+                {siteConfig.demo.email}
+              </span>
+              {" / "}
+              <span className="font-mono text-foreground">
+                {siteConfig.demo.password}
+              </span>
+            </p>
+          </div>
         </CardContent>
         {error && (
           <p
