@@ -142,4 +142,4 @@ supabase/           # Database schema
 
 ---
 
-Built by **Akash Gauda** · [LinkedIn](link) · [Portfolio](link)
+Built by **Akash Gauda** · [LinkedIn]([link](https://www.linkedin.com/in/akashgauda16 )) · [Portfolio](link)
