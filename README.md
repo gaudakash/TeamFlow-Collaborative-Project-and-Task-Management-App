@@ -5,7 +5,7 @@
 **A real-time collaborative Kanban board for small teams.**
 Built with Next.js 16, TypeScript, Supabase, and TanStack Query.
 
-🔗 **Live demo:** <https://your-app.vercel.app>
+🔗 **Live demo:** https://team-flow-collaborative-project-and.vercel.app/
 👤 **Demo login:** `demo@teamflow-demo.com` / `TeamFlowDemo2025!`
 
 ![Real-time collaboration demo](docs/demo-realtime.gif)
@@ -142,4 +142,4 @@ supabase/           # Database schema
 
 ---
 
-Built by **<Your Name>** · [LinkedIn](link) · [Portfolio](link)
+Built by **Akash Gauda** · [LinkedIn](link) · [Portfolio](link)
